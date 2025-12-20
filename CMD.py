@@ -18,7 +18,7 @@ class Node:
         if self.type == "directory":
             self.children = []
         self.parent = None
-
+    def clone():
     def splite_way(address):
         if "/" not in address:
             return ".", address
@@ -62,8 +62,8 @@ class Node:
 
         return current
 
-    def stat(current,text,root):
-            temp = Node.resolve_path(text, current, root)
+    def stat(current,address,root):
+            temp = Node.resolve_path(address, current, root)
             if temp is not None:
                 if temp.type != "directory":
                     print(f"{temp.type}  {temp.time} Size = {temp.size} ")
@@ -120,11 +120,14 @@ class Node:
                 print("Invalid path")
                 return
             order = order[:-1]
+        count = 0
         if len(order)==1:
             for child in temp.children:
                 if not child.name.startswith("."):
                     print(child.name, end="  ")
-            print()
+                    count += 1
+            if count > 0:
+                print()
         elif order[1] == "-l":
             for child in temp.children:
                 if child.type == "file":
@@ -170,6 +173,7 @@ class Node:
                 if len(child.children) == 0:
                     print("success")
                     current.children.remove(child)
+                    return
         print("error")
 
     def cd(current, text, root):
@@ -195,7 +199,29 @@ class Node:
         path = path[::-1]
         path= path[1:]
         print("/"+"/".join(path))
-
+    def mv(current,name,new,root):
+        old = None
+        for child in current.children:
+            if child.name == name:
+                old = child
+                break
+        if old is None:
+            print(f"{name} does not exist")
+            return
+        new_location = None
+        if new[-1] == "/":
+            new_location = Node.resolve_path(new[:-1], current, root)
+        elif new[0] == "/":
+            new_location = Node.resolve_path(new, current, root)
+        if new_location is not None:
+            return
+        elif new_location is None:
+            print("Error: Invalid path")
+            return
+        old.name = new
+        return
+    def cp(current,name,new,root):
+        return
 
 
 
@@ -229,9 +255,15 @@ while True:
     elif order == "pwd":
         Node.pwd(current_address)
     elif order[0] == "stat" and len(order)==2:
-        Node.stat(current_address,text[5],root)
-    elif order[0] == "rm" :
-        Node.rm(current_address,text[3:])
+        Node.stat(current_address,order[1],root)
+    elif order[0] == "rm" and len(order)==2:
+        Node.rm1(current_address,text[3:])
+    elif order[0] == "rm":
+        Node.rm1(current_address,text[7:])
     elif order[0] == "rmdir":
-
+        Node.rmdir(current_address,order[1])
+    elif order[0] == "mv" and len(order)==3:
+        Node.mv(current_address,order[1],order[2],root)
+    elif order[0] == "cp":
+        Node.cp(current_address,text[3:])
 
