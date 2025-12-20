@@ -24,7 +24,7 @@ class Node:
             return ".", address
 
         index = address.rfind("/")
-
+s
         if index == 0:
             parent = "/"
         else:
