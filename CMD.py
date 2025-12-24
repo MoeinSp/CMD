@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class Node:
-    def __init__(self , name , type_, time = None):
+    def __init__(self , name , type_, time = None , content = None):
         if time is None:
             self.time = datetime.now()
         else:
@@ -12,19 +12,22 @@ class Node:
         self.type = type_
         self.name = name
         if self.type == "file":
-            print("Enter your content.")
-            self.Content = input()
-            self.size = len(self.Content)
+            self.content = content
+            if self.content is not None:
+                self.size = len(self.content)
+            else :
+                self.size = 0
         if self.type == "directory":
             self.children = []
         self.parent = None
-    def clone():
+    def clone(obj,coppy,parentcopy):
+        coppy = Node(obj.name,obj.type,obj.time,obj.content)
+        return
     def splite_way(address):
         if "/" not in address:
             return ".", address
 
         index = address.rfind("/")
-s
         if index == 0:
             parent = "/"
         else:
@@ -107,7 +110,8 @@ s
             if child.name == name:
                 print("Error: Name already exists")
                 return
-        new = Node(name, "file")
+        content = input("Enter the content: ")
+        new = Node(name, "file",None,content)
         new.parent = current
         current.children.append(new)
 
@@ -199,34 +203,81 @@ s
         path = path[::-1]
         path= path[1:]
         print("/"+"/".join(path))
-    def mv(current,name,new,root):
+
+    def mv(current, name, new, root):
         old = None
         for child in current.children:
             if child.name == name:
                 old = child
                 break
+
         if old is None:
             print(f"{name} does not exist")
             return
-        new_location = None
-        if new[-1] == "/":
-            new_location = Node.resolve_path(new[:-1], current, root)
-        elif new[0] == "/":
-            new_location = Node.resolve_path(new, current, root)
-        if new_location is not None:
+
+        target = new.rstrip("/")
+
+        dest = Node.resolve_path(target, current, root)
+        if dest is not None and dest.type == "directory":
+            old.parent.children.remove(old)
+            old.parent = dest
+            dest.children.append(old)
             return
-        elif new_location is None:
+
+        if "/" in target:
+            parent_path, new_name = target.rsplit("/", 1)
+            parent = Node.resolve_path(parent_path, current, root)
+            if parent is None or parent.type != "directory":
+                print("Error: Invalid path")
+                return
+
+            for child in parent.children:
+                if child.name == new_name:
+                    print("Error: Name already exists")
+                    return
+
+            old.parent.children.remove(old)
+            old.parent = parent
+            old.name = new_name
+            parent.children.append(old)
+            return
+
+        for child in current.children:
+            if child.name == target:
+                print("Error: Name already exists")
+                return
+
+        old.name = target
+
+    def cp(current,src,dst,root):
+        src1 = src.rstrip("/")
+        source = Node.resolve_path(src1, current, root)
+        if source is None:
             print("Error: Invalid path")
             return
-        old.name = new
-        return
-    def cp(current,name,new,root):
-        return
 
 
+        dst1 = dst.rstrip("/")
+        dest = Node.resolve_path(dst1, current, root)
+        if dst[-1] == "/" and dest is not None and dest.type != "directory":
+            print("Error: Not a directory")
+            return
 
 
+        if dest is None:
+            # جدا کن والد و فرزند و چک کن اگه والد معتبر بود ...
+            # return
 
+
+            
+        if(dest.type == "directory"):
+            new_copy = Node.copy(source,dest)
+        elif dest.type == "file":
+            if(source.type == "directory"):
+                print("Error: Not a directory to file")
+            elif (dest.type == "file"):
+                new_copy = Node.copy(source, dest)
+                return
 
 
 home = Node("home","directory")
