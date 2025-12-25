@@ -1,4 +1,6 @@
 from datetime import datetime
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QApplication, QLineEdit, QPushButton
+import sys
 
 class Node:
     def __init__(self , name , type_, time = None , content = None):
@@ -246,7 +248,6 @@ class Node:
             if child.name == target:
                 print("Error: Name already exists")
                 return
-
         old.name = target
 
     def cp(current,src,dst,root):
@@ -265,8 +266,8 @@ class Node:
 
 
         if dest is None:
-            # جدا کن والد و فرزند و چک کن اگه والد معتبر بود ...
-            # return
+
+             return
 
 
             
@@ -285,6 +286,28 @@ root = Node("/","directory")
 root.children.append(home)
 home.parent = root
 current_address = home
+
+
+
+app = QApplication(sys.argv)
+window = QWidget()
+window.resize(800,600)
+label = QLabel("result")
+input_box = QLineEdit(window)
+input_box.setPlaceholderText("Enter your command here")
+button_b = QPushButton("Show Text")
+layout = QVBoxLayout()
+layout.addWidget(input_box)
+layout.addWidget(button_b)
+layout.addWidget(label)
+window.setLayout(layout)
+window.show()
+def command():
+    command_c = input_box.text()
+    input_box.clear()
+    return command_c
+button_b.clicked.connect(command)
+app.exec()
 
 while True:
     Node.pwd(current_address)
