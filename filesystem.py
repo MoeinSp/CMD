@@ -69,29 +69,35 @@ class Node:
         return current
 
     def stat(current, address, root):
+        result = None
         temp = Node.resolve_path(address, current, root)
         if temp is not None:
             if temp.type != "directory":
-                print(f"{temp.type}  {temp.time} Size = {temp.size} ")
+                result = f"{temp.type}  {temp.time} Size = {temp.size} "
+                return result
             else:
-                print(f"{temp.type}  {temp.time} ")
+                result = f"{temp.type}  {temp.time} "
+                return result
 
     def mkdir(root, current, text):
+        result = None
         parent_path, name = Node.splite_way(text)
         temp = Node.resolve_path(parent_path, current, root)
         if temp is None:
-            print("Invalid command format")
-            return
+            result = "Invalid command format"
+            return result
         if temp.type != "directory":
-            print("Error: Not a directory")
-            return
+            result = "Error: Not a directory"
+            return result
         for child in temp.children:
             if child.name == name:
-                print("Error: Name already exists")
-                return
+                result = "Error: Name already exists"
+                return result
         new = Node(name, "directory")
         temp.children.append(new)
         new.parent = temp
+        result = "success"
+        return result
 
     def touch(current, order):
         name = None
@@ -119,34 +125,35 @@ class Node:
         current.children.append(new)
 
     def ls(current, order, root, text):
+        result = ""
         temp = current
         if len(order) >= 2 and "/" in order[-1]:
             # ادرس رو درست کن
             temp = Node.resolve_path(order[-1], current, root)
             if temp is None:
-                print("Invalid path")
-                return
+                result = "Invalid path"
+                return result
             order = order[:-1]
         count = 0
         if len(order) == 1:
             for child in temp.children:
                 if not child.name.startswith("."):
-                    print(child.name, end="  ")
+                    result += child.name + "  "
                     count += 1
             if count > 0:
-                print()
+                result += "\n"
         elif order[1] == "-l":
             for child in temp.children:
                 if child.type == "file":
-                    print(child.size, end=" ")
-                print(child.time.strftime("%b %d %H:%M"), end=" ")
-                print(child.name)
+                    result += f"{child.size}  "
+                result += f'{child.time.strftime("%b %d %H:%M")}  '
+                result += child.name + "\n"
 
 
         elif order[1] == "-a":
             for child in temp.children:
-                print(child.name, end="  ")
-
+                result += child.name + "  "
+        return result
     def rm1(currrent, filename):
         for child in currrent.children:
             if child.name == filename:
@@ -175,13 +182,15 @@ class Node:
                 dir.children.remove(child)
 
     def rmdir(current, dir_name):
+        result = ""
         for child in current.children:
             if child.name == dir_name:
                 if len(child.children) == 0:
-                    print("success")
+                    result = "success"
                     current.children.remove(child)
-                    return
-        print("error")
+                    return result
+        result = "error"
+        return result
 
     def cd(current, text, root):
         temp = Node.resolve_path(text, current, root)
@@ -277,3 +286,4 @@ class Node:
                 new_copy = Node.copy(source, dest)
                 return
 
+        def get_command()
