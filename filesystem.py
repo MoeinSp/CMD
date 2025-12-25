@@ -2,7 +2,7 @@ from datetime import datetime
 
 
 class Node:
-    def __init__(self, name, type_, time=None, content=None):
+    def __init__(self, name, type_, time=None):
         if time is None:
             self.time = datetime.now()
         else:
@@ -13,11 +13,7 @@ class Node:
         self.type = type_
         self.name = name
         if self.type == "file":
-            self.content = content
-            if self.content is not None:
-                self.size = len(self.content)
-            else:
-                self.size = 0
+            self.size = 0
         if self.type == "directory":
             self.children = []
         self.parent = None
@@ -69,38 +65,39 @@ class Node:
         return current
 
     def stat(current, address, root):
-        result = None
+        result = ""
         temp = Node.resolve_path(address, current, root)
         if temp is not None:
             if temp.type != "directory":
                 result = f"{temp.type}  {temp.time} Size = {temp.size} "
-                return result
+                return current,result
             else:
                 result = f"{temp.type}  {temp.time} "
-                return result
+                return current,result
 
     def mkdir(root, current, text):
-        result = None
+        result = ""
         parent_path, name = Node.splite_way(text)
         temp = Node.resolve_path(parent_path, current, root)
         if temp is None:
             result = "Invalid command format"
-            return result
+            return current,result
         if temp.type != "directory":
             result = "Error: Not a directory"
-            return result
+            return current,result
         for child in temp.children:
             if child.name == name:
                 result = "Error: Name already exists"
-                return result
+                return current,result
         new = Node(name, "directory")
         temp.children.append(new)
         new.parent = temp
         result = "success"
-        return result
+        return current,result
 
     def touch(current, order):
-        name = None
+        result = ""
+        name = ""
         time = datetime.now()
         if order[0] == "-t" and len(order) == 4:
             time = None
@@ -108,21 +105,23 @@ class Node:
             try:
                 time = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
             except ValueError:
-                print("Invalid time format")
+                result = "Invalid time format"
+                return current,result
             if time is None:
-                return
+                return current,result
             name = order[-1]
         elif len(order) == 1:
             name = order[0]
 
         for child in current.children:
             if child.name == name:
-                print("Error: Name already exists")
-                return
-        content = input("Enter the content: ")
-        new = Node(name, "file", None, content)
+                result = "Error: Name already exists"
+                return current,result
+        new = Node(name, "file", None)
         new.parent = current
         current.children.append(new)
+        result = "success"
+        return current,result
 
     def ls(current, order, root, text):
         result = ""
@@ -132,7 +131,7 @@ class Node:
             temp = Node.resolve_path(order[-1], current, root)
             if temp is None:
                 result = "Invalid path"
-                return result
+                return current,result
             order = order[:-1]
         count = 0
         if len(order) == 1:
@@ -153,25 +152,28 @@ class Node:
         elif order[1] == "-a":
             for child in temp.children:
                 result += child.name + "  "
-        return result
+        return current,result
     def rm1(currrent, filename):
+
         for child in currrent.children:
             if child.name == filename:
-                print("success")
+                result = "success"
                 currrent.children.remove(child)
-                return
-        print("error")
+                return currrent,result
+        result = "error"
+        return currrent,result
 
     def rm2(currrent, name):
         for child in currrent.children:
             if child.name == name:
                 if child.type != "directory":
                     currrent.children.remove(child)
-                    print("success")
-                    return
+                    result = "success"
+                    return currrent,result
                 elif child.type == "directory":
                     Node.delete_dir(child)
-        print("error")
+        result = "error"
+        return currrent,result
 
     def delete_dir(dir):
         for child in list(dir.children):
@@ -182,31 +184,29 @@ class Node:
                 dir.children.remove(child)
 
     def rmdir(current, dir_name):
-        result = ""
         for child in current.children:
             if child.name == dir_name:
                 if len(child.children) == 0:
                     result = "success"
                     current.children.remove(child)
-                    return result
+                    return current,result
         result = "error"
-        return result
+        return  current,result
 
     def cd(current, text, root):
         temp = Node.resolve_path(text, current, root)
-
+        result = ""
         if temp is None:
-            print("Error: Invalid path")
-            return current
+            result = "Error: Invalid path"
+            return current ,result
         if temp.type != "directory":
-            print("Error: Not a directory")
-            return current
-        return temp
+            result = "Error: Not a directory"
+            return current , result
+        return temp , result
 
     def pwd(current_address):
+        result = ""
         path = []
-        if not isinstance(current_address, Node):
-            return
         node = current_address
         while node is not None:
             path.append(node.name)
@@ -214,9 +214,10 @@ class Node:
 
         path = path[::-1]
         path = path[1:]
-        print("/" + "/".join(path))
-
+        result = "/" + "/".join(path)
+        return current_address,result
     def mv(current, name, new, root):
+        result = ""
         old = None
         for child in current.children:
             if child.name == name:
@@ -224,8 +225,8 @@ class Node:
                 break
 
         if old is None:
-            print(f"{name} does not exist")
-            return
+            result = f"{name} does not exist"
+            return current,result
 
         target = new.rstrip("/")
 
@@ -234,56 +235,102 @@ class Node:
             old.parent.children.remove(old)
             old.parent = dest
             dest.children.append(old)
-            return
+            return current,result
 
         if "/" in target:
             parent_path, new_name = target.rsplit("/", 1)
             parent = Node.resolve_path(parent_path, current, root)
             if parent is None or parent.type != "directory":
-                print("Error: Invalid path")
-                return
+                result = "Error: Invalid path"
+                return current,result
 
             for child in parent.children:
                 if child.name == new_name:
-                    print("Error: Name already exists")
-                    return
+                    result = "Error: Name already exists"
+                    return current,result
 
             old.parent.children.remove(old)
             old.parent = parent
             old.name = new_name
             parent.children.append(old)
-            return
+            result = "success"
+            return current,result
 
         for child in current.children:
             if child.name == target:
-                print("Error: Name already exists")
-                return
+                result = "Error: Name already exists"
+                return current,result
 
         old.name = target
+        result = "success"
+        return current,result
 
     def cp(current, src, dst, root):
+        result = ""
         src1 = src.rstrip("/")
         source = Node.resolve_path(src1, current, root)
         if source is None:
-            print("Error: Invalid path")
-            return
+            result = "Error: Invalid path"
+            return current,result
 
         dst1 = dst.rstrip("/")
         dest = Node.resolve_path(dst1, current, root)
         if dst[-1] == "/" and dest is not None and dest.type != "directory":
-            print("Error: Not a directory")
-            return
+            result = "Error: Not a directory"
+            return current,result
 
         if dest is None:
-            return
+            return current,result
 
-        if (dest.type == "directory"):
+        if dest.type == "directory":
             new_copy = Node.copy(source, dest)
         elif dest.type == "file":
             if (source.type == "directory"):
-                print("Error: Not a directory to file")
+                result = "Error: Not a directory to file"
+                return current,result
             elif (dest.type == "file"):
                 new_copy = Node.copy(source, dest)
-                return
+                result = "success"
+                return current,result
 
-        def get_command()
+def get_command(text,root,current_address):
+    result = ""
+    order = text.split()
+    if order[0] == "mkdir":
+        current_address , result = Node.mkdir(root, current_address, text[6:])
+        return current_address,result
+    elif order[0] == "touch":
+        current_address,result = Node.touch(current_address, order[1:])
+        return current_address , result
+    elif order[0] == "ls":
+        current_address,result = Node.ls(current_address, order, root, text)
+        return current_address , result
+    elif order[0] == "cd":
+        if len(order) != 2:
+            result = "Invalid command format"
+            return current_address, result
+        current_address , result = Node.cd(current_address, text[3:], root)
+        return current_address , result
+    elif order[0] == "pwd":
+        current_address,result = Node.pwd(current_address)
+        return current_address,result
+    elif order[0] == "stat" and len(order) == 2:
+        current_address,result = Node.stat(current_address, order[1], root)
+        return current_address,result
+    elif order[0] == "rm" and len(order) == 2:
+        current_address , result = Node.rm1(current_address, text[3:])
+        return current_address,result
+    elif order[0] == "rm":
+        current_address , result = Node.rm1(current_address, text[7:])
+        return current_address,result
+    elif order[0] == "rmdir":
+        current_address , result = Node.rmdir(current_address, order[1])
+        return current_address,result
+    elif order[0] == "mv" and len(order) == 3:
+        current_address , result = Node.mv(current_address, order[1], order[2], root)
+        return current_address,result
+    elif order[0] == "cp":
+        current_address , result = Node.cp(current_address, text[3:])
+        return current_address,result
+    result = "invalid command"
+    return current_address,result

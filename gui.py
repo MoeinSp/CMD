@@ -5,108 +5,96 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel
 )
 
-app = QApplication(sys.argv)
+from filesystem import get_command
 
-window = QWidget()
-window.setWindowTitle("File System Manager")
-window.resize(900, 600)
 
-# ===== STYLE =====
-window.setStyleSheet("""
-QWidget {
-    background-color: #0f172a;
-    color: #e5e7eb;
-    font-family: Consolas;
-    font-size: 14px;
-}
+class FileSystemUI(QWidget):
+    def __init__(self, root, current):
+        super().__init__()
 
-QLabel {
-    color: #94a3b8;
-}
+        self.root = root
+        self.current = current
 
-QTextEdit {
-    background-color: #020617;
-    border: 1px solid #1e293b;
-    border-radius: 10px;
-    padding: 10px;
-}
+        self.setWindowTitle("File System Manager")
+        self.resize(900, 600)
 
-QLineEdit {
-    background-color: #020617;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 8px;
-}
+        self.setStyleSheet("""
+        QWidget {
+            background-color: #0f172a;
+            color: #e5e7eb;
+            font-family: Consolas;
+            font-size: 14px;
+        }
 
-QLineEdit:focus {
-    border: 1px solid #2563eb;
-}
+        QLabel { color: #94a3b8; }
 
-QPushButton {
-    background-color: #2563eb;
-    border-radius: 8px;
-    padding: 8px 18px;
-    font-weight: bold;
-}
+        QTextEdit {
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 10px;
+        }
 
-QPushButton:hover {
-    background-color: #1d4ed8;
-}
+        QLineEdit {
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 8px;
+        }
 
-QPushButton:pressed {
-    background-color: #1e40af;
-}
-""")
+        QLineEdit:focus { border: 1px solid #2563eb; }
 
-# ===== HEADER =====
-title = QLabel("Virtual File System Manager")
+        QPushButton {
+            background-color: #2563eb;
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-weight: bold;
+        }
 
-# ===== OUTPUT (Terminal Area) =====
-output = QTextEdit()
-output.setReadOnly(True)
-output.setMinimumHeight(420)   # 👈 ارتفاع خروجی
-output.append("Welcome to File System Manager\n")
+        QPushButton:hover { background-color: #1d4ed8; }
+        QPushButton:pressed { background-color: #1e40af; }
+        """)
 
-# ===== INPUT AREA =====
-input_box = QLineEdit()
-input_box.setPlaceholderText("Enter command (e.g. ls, pwd, cd folder)")
-input_box.setMinimumHeight(38)  # 👈 ارتفاع ورودی
+        self.init_ui()
 
-run_btn = QPushButton("Run")
-run_btn.setFixedHeight(38)      # 👈 ارتفاع دکمه
+    def init_ui(self):
+        title = QLabel("Virtual File System Manager")
 
-# ===== INPUT LAYOUT =====
-input_layout = QHBoxLayout()
-input_layout.addWidget(input_box, 1)  # 👈 ورودی کش بیاد
-input_layout.addWidget(run_btn)
+        self.output = QTextEdit()
+        self.output.setReadOnly(True)
+        self.output.append("Welcome to File System Manager\n")
 
-# ===== MAIN LAYOUT =====
-layout = QVBoxLayout()
-layout.setSpacing(12)
-layout.addWidget(title)
-layout.addWidget(output, 1)     # 👈 خروجی کل فضا رو بگیره
-layout.addLayout(input_layout)
+        self.input_box = QLineEdit()
+        self.input_box.setPlaceholderText("Enter command (e.g. ls, pwd, cd folder)")
 
-window.setLayout(layout)
+        run_btn = QPushButton("Run")
 
-# ===== LOGIC HOOK (نمونه اتصال) =====
-def handle_command():
-    cmd = input_box.text().strip()
-    if not cmd:
-        return
+        input_layout = QHBoxLayout()
+        input_layout.addWidget(self.input_box, 1)
+        input_layout.addWidget(run_btn)
 
-    input_box.clear()
+        layout = QVBoxLayout(self)
+        layout.addWidget(title)
+        layout.addWidget(self.output, 1)
+        layout.addLayout(input_layout)
 
-    # 🔽 اینجا منطق خودت رو صدا بزن
-    # result = run_command(cmd)
-    result = f"Executed: {cmd}"  # موقت
+        # اتصال‌ها
+        run_btn.clicked.connect(self.handle_command)
+        self.input_box.returnPressed.connect(self.handle_command)
 
-    output.append(f"> {cmd}")
-    output.append(result)
-    output.append("")  # خط خالی
+    def handle_command(self):
+        cmd = self.input_box.text().strip()
+        if not cmd:
+            return
 
-run_btn.clicked.connect(handle_command)
-input_box.returnPressed.connect(handle_command)
+        self.input_box.clear()
 
-window.show()
-app.exec()
+        # ⭐ اتصال به منطق پروژه
+        self.current, result = get_command(
+            cmd,
+            self.root,
+            self.current
+        )
+
+        if result:
+            self.output.append(result)
