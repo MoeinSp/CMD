@@ -1,5 +1,5 @@
 from datetime import datetime
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QApplication, QLineEdit, QPushButton
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QApplication, QLineEdit, QPushButton, QTextEdit, QHBoxLayout
 import sys
 
 class Node:
@@ -289,29 +289,116 @@ current_address = home
 
 
 
+
 app = QApplication(sys.argv)
+
 window = QWidget()
-window.resize(800,600)
-label = QLabel("result")
-input_box = QLineEdit(window)
-input_box.setPlaceholderText("Enter your command here")
-button_b = QPushButton("Show Text")
+window.setWindowTitle("File System Manager")
+window.resize(900, 600)
+
+# ===== STYLE =====
+window.setStyleSheet("""
+QWidget {
+    background-color: #0f172a;
+    color: #e5e7eb;
+    font-family: Consolas;
+    font-size: 14px;
+}
+
+QLabel {
+    color: #94a3b8;
+}
+
+QTextEdit {
+    background-color: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+QLineEdit {
+    background-color: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+QLineEdit:focus {
+    border: 1px solid #2563eb;
+}
+
+QPushButton {
+    background-color: #2563eb;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #1d4ed8;
+}
+
+QPushButton:pressed {
+    background-color: #1e40af;
+}
+""")
+
+# ===== HEADER =====
+title = QLabel("Virtual File System Manager")
+
+# ===== OUTPUT (Terminal Area) =====
+output = QTextEdit()
+output.setReadOnly(True)
+output.setMinimumHeight(420)
+output.append("Welcome to File System Manager\n")
+
+# ===== INPUT AREA =====
+input_box = QLineEdit()
+input_box.setPlaceholderText("Enter command (e.g. ls, pwd, cd folder)")
+input_box.setMinimumHeight(38)
+
+run_btn = QPushButton("Run")
+run_btn.setFixedHeight(38)
+
+# ===== INPUT LAYOUT =====
+input_layout = QHBoxLayout()
+input_layout.addWidget(input_box, 1)
+input_layout.addWidget(run_btn)
+
+# ===== MAIN LAYOUT =====
 layout = QVBoxLayout()
-layout.addWidget(input_box)
-layout.addWidget(button_b)
-layout.addWidget(label)
+layout.setSpacing(12)
+layout.addWidget(title)
+layout.addWidget(output, 1)
+layout.addLayout(input_layout)
+
 window.setLayout(layout)
+
+def handle_command():
+    cmd = input_box.text().strip()
+    if not cmd:
+        return
+
+    input_box.clear()
+
+run_btn.clicked.connect(handle_command)
+input_box.returnPressed.connect(handle_command)
+
 window.show()
-def command():
+def command_cmd():
     command_c = input_box.text()
     input_box.clear()
     return command_c
-button_b.clicked.connect(command)
 app.exec()
 
+
+
 while True:
+
+    command = button_b.clicked.connect(command_cmd)
+
     Node.pwd(current_address)
-    text = input().strip()
+    text = command.strip()
     if not text:
         continue
     order = text.split()
