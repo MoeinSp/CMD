@@ -120,6 +120,9 @@ class Node:
                 return current, result
             if time is None:
                 return current, result
+            if not Node.has_permission(current, "w"):
+                result = "Error: Permission denied"
+                return current, result
             name = order[-1]
         elif len(order) == 1:
             name = order[0]
@@ -213,14 +216,16 @@ class Node:
     @staticmethod
     def cd(current, text, root):
         temp = Node.resolve_path(text, current, root)
-        result = ""
         if temp is None:
-            result = "Error: Invalid path"
-            return current, result
+            return current, "Error: No such file or directory"
+
         if temp.type != "directory":
-            result = "Error: Not a directory"
-            return current, result
-        return temp, result
+            return current, "Error: Not a directory"
+
+        if not Node.has_permission(temp, "x"):
+            return current, "Error: Permission denied"
+
+        return temp, ""
 
     @staticmethod
     def pwd(current_address):
@@ -269,7 +274,9 @@ class Node:
                 if child.name == new_name:
                     result = "Error: Name already exists"
                     return current, result
-
+            if not Node.has_permission(old, "w"):
+                result = "Error: Permission denied"
+                return current, result
             old.parent.children.remove(old)
             old.parent = parent
             old.name = new_name
