@@ -22,11 +22,6 @@ class Node:
         self.parent = None
 
     @staticmethod
-    def clone(obj, coppy, parent_copy):
-        coppy = Node(obj.name, obj.type, obj.time, obj.content)
-        return
-
-    @staticmethod
     def split_way(address):
         if "/" not in address:
             return ".", address
@@ -44,21 +39,22 @@ class Node:
 
     @staticmethod
     def resolve_path(path, current, root):
+        temp = current
         if path.startswith("/"):
-            current = root
+            temp = root
             parts = path[1:].split("/")
         else:
             parts = path.split("/")
         for i, part in enumerate(parts):
             if part == "..":
-                if current.parent is not None:
-                    current = current.parent
+                if temp.parent is not None:
+                    temp = temp.parent
                     continue
             if part == "." or part == "":
                 continue
             address = None
-            if current.children is not None:
-                for child in current.children:
+            if temp.children is not None:
+                for child in temp.children:
                     if child.name == part:
                         address = child
                         break
@@ -66,24 +62,35 @@ class Node:
                 return None
             if i != len(parts) - 1 and address.type != "directory":
                 return None
-            current = address
-        return current
+            temp = address
+        return temp
 
     @staticmethod
     def stat(current, address, root):
-        result = ""
+        if address is None:
+            return current,"missing operand"
         temp = Node.resolve_path(address, current, root)
-        if temp is not None:
-            if temp.type != "directory":
-                result = f"{temp.type}  {temp.time} Size = {temp.size} "
-                return current, result
-            else:
-                result = f"{temp.type}  {temp.time} "
-                return current, result
+        if temp is  None:
+            return current , "missing operand"
+        if address.startswith("/"):
+            parts = address.strip("/").split("/")
+            start = root
+        else:
+            parts = address.split("/")
+            start = current
+
+        target, error = Node.check_execute_path(start, parts)
+        if error:
+            return current, error
+        if temp.type != "directory":
+            result = f"{temp.type}  {temp.time} Size = {temp.size} "
+            return current, result
+        else:
+            result = f"{temp.type}  {temp.time} "
+            return current, result
 
     @staticmethod
     def mkdir(root, current, text):
-        result = ""
         parent_path, name = Node.split_way(text)
         temp = Node.resolve_path(parent_path, current, root)
         if temp is None:
@@ -96,9 +103,19 @@ class Node:
             if child.name == name:
                 result = "Error: Name already exists"
                 return current, result
-        if not Node.has_permission(temp,"w") or not Node.has_permission(current,"x"):
+        if not Node.has_permission(temp,"w") :
             result = "Error: Permission denied"
             return current, result
+        if text.startswith("/"):
+            parts = text.strip("/").split("/")
+            start = root
+        else:
+            parts = text.split("/")
+            start = current
+
+        target, error = Node.check_execute_path(start, parts)
+        if error:
+            return current, error
         new = Node(name, "directory")
         temp.children.append(new)
         new.parent = temp
@@ -111,7 +128,6 @@ class Node:
         name = ""
         time = datetime.now()
         if order[0] == "-t" and len(order) == 4:
-            time = None
             date_str = order[1] + " " + order[2]
             try:
                 time = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
@@ -119,9 +135,6 @@ class Node:
                 result = "Invalid time format"
                 return current, result
             if time is None:
-                return current, result
-            if not Node.has_permission(current, "w"):
-                result = "Error: Permission denied"
                 return current, result
             name = order[-1]
         elif len(order) == 1:
@@ -131,42 +144,84 @@ class Node:
             if child.name == name:
                 result = "Error: Name already exists"
                 return current, result
-        new = Node(name, "file", None)
+        if not Node.has_permission(current, "w") or not Node.has_permission(current, "x"):
+            result = "Error: Permission denied"
+            return current, result
+        new = Node(name, "file", time)
         new.parent = current
         current.children.append(new)
         result = "success"
         return current, result
+    @staticmethod
+    def perm_to_rwx(n):
+        n = int(n)
+        return (
+                ("r" if n & 4 else "-") +
+                ("w" if n & 2 else "-") +
+                ("x" if n & 1 else "-")
+        )
 
     @staticmethod
-    def ls(current, order, root, text):
+    def ls(current, order, root):
         result = ""
         temp = current
-        if len(order) >= 2 and "/" in order[-1]:
-            # ادرس رو درست کن
-            temp = Node.resolve_path(order[-1], current, root)
+
+        show_all = False
+        long_format = False
+        path = None
+
+
+        for arg in order[1:]:
+            if arg == "-a":
+                show_all = True
+            elif arg == "-l":
+                long_format = True
+            else:
+                path = arg
+
+
+        if path:
+            temp = Node.resolve_path(path, current, root)
             if temp is None:
-                result = "Invalid path"
-                return current, result
-            order = order[:-1]
-        count = 0
-        if len(order) == 1:
-            for child in temp.children:
-                if not child.name.startswith("."):
-                    result += child.name + "  "
-                    count += 1
-            if count > 0:
-                result += "\n"
-        elif order[1] == "-l":
-            for child in temp.children:
-                if child.type == "file":
-                    result += f"{child.size}  "
-                result += f'{child.time.strftime("%b %d %H:%M")}  '
-                result += child.name + "\n"
+                return current, "Error: Invalid path"
 
+        if temp.type != "directory":
+            return current, "Error: Not a directory"
 
-        elif order[1] == "-a":
-            for child in temp.children:
+        for child in temp.children:
+            if not show_all and child.name.startswith("."):
+                continue
+
+            # ----- ls -----
+            if not long_format:
                 result += child.name + "  "
+                continue
+
+            # ----- ls -l -----
+            type_char = "d" if child.type == "directory" else "-"
+
+            o, g, ot = child.perms
+            perms = (
+                    Node.perm_to_rwx(o) +
+                    Node.perm_to_rwx(g) +
+                    Node.perm_to_rwx(ot)
+            )
+
+            size = child.size if child.type == "file" else 0
+            time_str = child.time.strftime("%b %d %H:%M")
+
+            result += (
+                f"{type_char}{perms}  "
+                f"{child.owner:<8} "
+                f"{child.group:<8} "
+                f"{size:>6}  "
+                f"{time_str}  "
+                f"{child.name}\n"
+            )
+
+        if not long_format:
+            result += "\n"
+
         return current, result
 
     @staticmethod
@@ -222,14 +277,21 @@ class Node:
         if temp.type != "directory":
             return current, "Error: Not a directory"
 
-        if not Node.has_permission(temp, "x"):
-            return current, "Error: Permission denied"
+        if text.startswith("/"):
+            parts = text.strip("/").split("/")
+            start = root
+        else:
+            parts = text.split("/")
+            start = current
+
+        target, error = Node.check_execute_path(start, parts)
+        if error:
+            return current, error
 
         return temp, ""
 
     @staticmethod
     def pwd(current_address):
-        result = ""
         path = []
         node = current_address
         while node is not None:
@@ -335,35 +397,6 @@ class Node:
         return current, "success"
 
     @staticmethod
-    def cp(current, src, dst, root):
-        result = ""
-        src1 = src.rstrip("/")
-        source = Node.resolve_path(src1, current, root)
-        if source is None:
-            result = "Error: Invalid path"
-            return current, result
-
-        dst1 = dst.rstrip("/")
-        dest = Node.resolve_path(dst1, current, root)
-        if dst[-1] == "/" and dest is not None and dest.type != "directory":
-            result = "Error: Not a directory"
-            return current, result
-
-        if dest is None:
-            return current, result
-
-        if dest.type == "directory":
-            new_copy = Node.copy(source, dest)
-        elif dest.type == "file":
-            if (source.type == "directory"):
-                result = "Error: Not a directory to file"
-                return current, result
-            elif (dest.type == "file"):
-                new_copy = Node.copy(source, dest)
-                result = "success"
-                return current, result
-
-    @staticmethod
     def chmod(root,current,order):
         if len(order) != 2:
             return current, "chmod: missing operand"
@@ -383,6 +416,7 @@ class Node:
             return current, "chmod: No such file or directory"
         target.perms = perm
         return current, "success"
+
     @staticmethod
     def has_permission(node, action):
         if node is None or not isinstance(node, Node):
@@ -397,8 +431,33 @@ class Node:
 
         if action == "x":
             return perm_digit & 1 != 0
-        return "access denied"
+        return False
 
+    @staticmethod
+    def check_execute_path(start, parts):
+        node = start
+        for part in parts:
+            if part == "":
+                continue
+
+            found = None
+            for child in node.children:
+                if child.name == part:
+                    found = child
+                    break
+
+            if not found:
+                return None, "Error: No such file or directory"
+
+            if found.type != "directory":
+                return None, "Error: Not a directory"
+
+            if not Node.has_permission(found, "x"):
+                return None, "Error: Permission denied"
+
+            node = found
+
+        return node, ""
 
 
 def get_command(text, root, current_address):
@@ -416,7 +475,7 @@ def get_command(text, root, current_address):
         return current_address, result
 
     elif order[0] == "ls":
-        current_address, result = Node.ls(current_address, order, root, text)
+        current_address, result = Node.ls(current_address, order, root)
         return current_address, result
 
     elif order[0] == "cd":
@@ -450,9 +509,6 @@ def get_command(text, root, current_address):
         current_address, result = Node.mv(current_address, order[1], order[2], root)
         return current_address, result
 
-    elif order[0] == "cp":
-        current_address, result = Node.cp(current_address, order[1], order[2], root)
-        return current_address, result
 
     elif order[0] == "echo":
         current_address, result = Node.echo(current_address, root, text[5:])
@@ -462,7 +518,7 @@ def get_command(text, root, current_address):
         return current_address, "Moein"
 
     elif order[0] == "chmod":
-        current_address, result = Node.chmod(current_address, root, order[1:])
+        current_address, result = Node.chmod(root, current_address, order[1:])
         return current_address, result
 
     elif text == "history":
