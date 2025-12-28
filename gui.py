@@ -115,6 +115,9 @@ class FileSystemUI(QWidget):
     # ---------- LOGIC ----------
     def handle_command(self):
         cmd = self.input_box.text().strip()
+        if cmd == "clear":
+            self.output.clear()
+            return
         if not cmd:
             return
 
